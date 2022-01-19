@@ -14,6 +14,8 @@ open class GalleryController: UIViewController, PermissionControllerDelegate {
   public weak var delegate: GalleryControllerDelegate?
 
   public let cart = Cart()
+  public var imagesPicked: (([Image]) -> ())?
+  public var pickingCancelled: ((GalleryController) -> ())?
 
   // MARK: - Init
 
@@ -71,6 +73,13 @@ open class GalleryController: UIViewController, PermissionControllerDelegate {
     guard Permission.Photos.status == .authorized else {
       return nil
     }
+    
+    if Permission.Camera.needsPermission {
+        guard Permission.Camera.status == .authorized else {
+          return nil
+        }
+    }
+
 
     let useCamera = Permission.Camera.needsPermission && Permission.Camera.status == .authorized
 
@@ -110,12 +119,14 @@ open class GalleryController: UIViewController, PermissionControllerDelegate {
   func setup() {
     EventHub.shared.close = { [weak self] in
       if let strongSelf = self {
+        strongSelf.pickingCancelled?(strongSelf)
         strongSelf.delegate?.galleryControllerDidCancel(strongSelf)
       }
     }
 
     EventHub.shared.doneWithImages = { [weak self] in
       if let strongSelf = self {
+        strongSelf.imagesPicked?(strongSelf.cart.images)
         strongSelf.delegate?.galleryController(strongSelf, didSelectImages: strongSelf.cart.images)
       }
     }
